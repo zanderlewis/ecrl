@@ -1,0 +1,78 @@
+! This would be the Java class name
+module "ManualDrive"
+
+! All robot and variable declarations must go here
+define {
+    ! This is the Drivetrain
+    drivetrain {
+        fl: "leftFront"  FORWARD
+        fr: "rightFront" REVERSE
+        bl: "leftBack"   FORWARD
+        br: "rightBack"  FORWARD
+    }
+
+    ! Turret specific
+    var turret_power = 1.0
+
+    ! Intake specific
+    var intake_power = 1.0
+
+    ! Loader specific
+    var loader_power = 0.5
+
+    ! Shooter specific
+    var target_velocity = 6000.0
+    var shooter_ticks = 28.0
+
+    ! Other motors
+    dc "intake"
+    dc "shooter"
+    dc "turret"
+    dc "loader"
+}
+
+! Teleop name and group
+teleop "Manual Drive" group "Main" {
+    loop {
+        ! Drivetrain handling
+        drive(gpad.left_stick_y, gpad.left_stick_x, gpad.right_stick_x)
+
+        ! Mapping buttons to actions with variable reassignment
+        if gpad.square {
+            robot.intake.set_power(intake_power)
+        } else if gpad.cross {
+            robot.intake.set_power(-intake_power)
+        } else {
+            robot.intake.stop()
+        }
+
+        if gpad.left_bumper {
+            robot.turret.set_power(turret_power)
+        } else if gpad.right_bumper {
+            robot.turret.set_power(-turret_power)
+        } else {
+            robot.turret.stop()
+        }
+
+        if gpad.dpad_up {
+            robot.loader.set_power(loader_power)
+        } else if gpad.dpad_down {
+            robot.loader.set_power(-loader_power)
+        } else {
+            robot.loader.stop()
+        }
+
+        ! Prevent accidental presses
+        if gpad.right_trigger > 0.5 {
+            robot.shooter.set_velocity(target_velocity, shooter_ticks)
+        } else {
+            robot.shooter.stop()
+        }
+
+        ! Telemetry output
+        robot.tel.show("Is Running?", "True")
+        robot.tel.show("Status", "Intake: #{intake_power}, Loader: #{loader_power}")
+        robot.tel.show("Target Velocity", target_velocity)
+        robot.tel.update()
+    }
+}

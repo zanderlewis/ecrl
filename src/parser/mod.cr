@@ -1,0 +1,6 @@
+require "./types"
+require "./ast"
+require "./lexer_adapter"
+require "./definition_parser"
+require "./statement_parser"
+require "./parser"
