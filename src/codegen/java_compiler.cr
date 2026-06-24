@@ -50,7 +50,7 @@ class JavaCompiler
     end
 
     @program[:hardware].each do |name, type|
-      io << "    private #{type} ECRL__#{name}Motor;\n"
+      io << "    private #{type} ecrl__#{name}Motor;\n"
     end
   end
 
@@ -92,9 +92,9 @@ class JavaCompiler
 
   private def generate_hardware_initialization(io : IO)
     @program[:hardware].each do |name, type|
-      io << "        ECRL__#{name}Motor = hardwareMap.get(#{type}.class, \"#{name}\");\n"
+      io << "        ecrl__#{name}Motor = hardwareMap.get(#{type}.class, \"#{name}\");\n"
       if type == "DcMotorEx"
-        io << "        ECRL__#{name}Motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);\n"
+        io << "        ecrl__#{name}Motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);\n"
       end
     end
   end
