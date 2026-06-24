@@ -71,8 +71,9 @@ teleop "Manual Drive" group "Main" {
 
         ! Telemetry output
         robot.tel.show("Is Running?", "True")
-        robot.tel.show("Status", "Intake: #{intake_power}, Loader: #{loader_power}")
-        robot.tel.show("Target Velocity", target_velocity)
+        robot.tel.show("Status", "Intake: #{intake_power}")
+        robot.tel.show("Status", "Loader: #{loader_power}")
+        robot.tel.show("Velocity", "Target: #{target_velocity}")
         robot.tel.update()
     }
 }
