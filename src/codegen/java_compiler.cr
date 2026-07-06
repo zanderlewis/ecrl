@@ -21,12 +21,18 @@ class JavaCompiler
     end
   end
 
+  private def uses_servos? : Bool
+    @program.hardware.values.includes?("Servo")
+  end
+
   private def generate_package_and_imports(io : IO)
     io << "package #{@package_name};\n\n"
     io << "import com.qualcomm.robotcore.eventloop.opmode.TeleOp;\n"
     io << "import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;\n"
     io << "import com.qualcomm.robotcore.hardware.DcMotor;\n"
-    io << "import com.qualcomm.robotcore.hardware.DcMotorEx;\n\n"
+    io << "import com.qualcomm.robotcore.hardware.DcMotorEx;\n"
+    io << "import com.qualcomm.robotcore.hardware.Servo;\n" if uses_servos?
+    io << "\n"
   end
 
   private def generate_class_header(io : IO)
@@ -45,7 +51,7 @@ class JavaCompiler
     end
 
     @program.hardware.each do |name, type|
-      io << "    private #{type} #{ValueFormatter.motor_field(name)};\n"
+      io << "    private #{type} #{ValueFormatter.hardware_field(name, type)};\n"
     end
   end
 
@@ -61,7 +67,7 @@ class JavaCompiler
     io << "        while (opModeIsActive()) {\n"
 
     @program.body.each do |expr|
-      AstWalker.walk_ast(expr, io, LOOP_BODY_INDENT)
+      AstWalker.walk_ast(expr, io, LOOP_BODY_INDENT, @program.hardware)
     end
 
     io << "        }\n"
@@ -88,7 +94,7 @@ class JavaCompiler
 
   private def generate_hardware_initialization(io : IO)
     @program.hardware.each do |name, type|
-      field = ValueFormatter.motor_field(name)
+      field = ValueFormatter.hardware_field(name, type)
       io << "        #{field} = hardwareMap.get(#{type}.class, \"#{name}\");\n"
       if type == "DcMotorEx"
         io << "        #{field}.setMode(DcMotor.RunMode.RUN_USING_ENCODER);\n"

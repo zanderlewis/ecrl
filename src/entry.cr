@@ -24,7 +24,7 @@ tokens = lexer.tokenize
 parser = Parser.new(tokens)
 program_ast = parser.parse_program
 
-resolved_package = package_name || program_ast.package
+resolved_package = package_name.nil? ? program_ast.package : package_name.not_nil!
 compiler = JavaCompiler.new(program_ast, resolved_package)
 File.write(output_file, compiler.compile)
 

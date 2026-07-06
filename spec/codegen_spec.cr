@@ -26,6 +26,19 @@ describe ValueFormatter do
 
   it "translates gamepad references" do
     ValueFormatter.translate_gamepad("gpad.square").should eq("gamepad1.square")
+    ValueFormatter.translate_gamepad("gpad2.square").should eq("gamepad2.square")
+  end
+
+  it "formats compound conditions" do
+    cond = AndCondition.new(
+      ComparisonCondition.new(
+        IdentifierValueExpr.new("gpad.right_trigger"),
+        ">",
+        NumberValueExpr.new("0.5"),
+      ),
+      ValueCondition.new(IdentifierValueExpr.new("gpad.square")),
+    )
+    ValueFormatter.format_condition(cond).should eq("(gamepad1.right_trigger > 0.5 && gamepad1.square)")
   end
 
   it "formats value expressions" do
@@ -160,5 +173,63 @@ describe JavaCompiler do
     ECR
 
     output.should contain("private void driveMecanum")
+  end
+
+  it "uses setVelocity(0) to stop encoder motors" do
+    output = compile_ecr(<<-'ECR')
+      define { dc "shooter" }
+      teleop "Test" {
+        loop {
+          robot.shooter.set_velocity(6000.0, 28.0)
+          robot.shooter.stop()
+        }
+      }
+    ECR
+
+    output.should contain("ecrl__shooterMotor.setVelocity(0);")
+    output.should_not contain("ecrl__shooterMotor.setPower(0.0);")
+  end
+
+  it "uses setPower(0) to stop regular motors" do
+    output = compile_ecr(<<-'ECR')
+      define { dc "intake" }
+      teleop "Test" {
+        loop {
+          robot.intake.stop()
+        }
+      }
+    ECR
+
+    output.should contain("ecrl__intakeMotor.setPower(0.0);")
+  end
+
+  it "generates servo declarations and setPosition calls" do
+    output = compile_ecr(<<-'ECR')
+      define { servo "wrist" }
+      teleop "Test" {
+        loop {
+          robot.wrist.set_position(0.75)
+        }
+      }
+    ECR
+
+    output.should contain("import com.qualcomm.robotcore.hardware.Servo;")
+    output.should contain("private Servo ecrl__wristServo;")
+    output.should contain("ecrl__wristServo.setPosition(0.75);")
+  end
+
+  it "generates compound if conditions" do
+    output = compile_ecr(<<-'ECR')
+      define { }
+      teleop "Test" {
+        loop {
+          if gpad.a && gpad.b || gpad.c > 0.5 {
+            robot.tel.update()
+          }
+        }
+      }
+    ECR
+
+    output.should contain("if (((gamepad1.a && gamepad1.b) || gamepad1.c > 0.5)) {")
   end
 end

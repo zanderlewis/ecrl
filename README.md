@@ -63,18 +63,20 @@ define {
 
     var speed = 1.0
     dc "intake"
+    servo "wrist"
 }
 
 teleop "Drive Mode" group "Main" {
     loop {
         drive(gpad.left_stick_y, gpad.left_stick_x, gpad.right_stick_x)
 
-        if gpad.square {
+        if gpad.square && gpad2.triangle {
             robot.intake.set_power(speed)
-        } else {
+        } else if gpad.right_trigger >= 0.5 {
             robot.intake.stop()
         }
 
+        robot.wrist.set_position(0.5)
         robot.tel.show("Speed", "Target: #{speed}")
         robot.tel.update()
     }
@@ -86,8 +88,11 @@ teleop "Drive Mode" group "Main" {
 - `module` sets the generated Java class name
 - `define` declares hardware, variables, and the mecanum drivetrain
 - `teleop` defines the FTC `@TeleOp` name, group, and main loop
-- `gpad.*` maps to `gamepad1.*` in generated Java
-- `robot.<device>.<method>(...)` controls motors and telemetry
+- `gpad.*` maps to `gamepad1.*`; `gpad2.*` maps to `gamepad2.*`
+- `dc` declares motors; `servo` declares servos
+- `if` supports comparisons (`>`, `<`, `>=`, `<=`, `==`, `!=`), `&&`, and `||`
+- `robot.<device>.set_power/set_velocity/stop` controls motors; `set_position` controls servos
+- `robot.tel.show/update` handles telemetry
 
 ## Examples
 

@@ -18,12 +18,17 @@ class ValueFormatter
     end
   end
 
+  def self.hardware_field(name : String, type : String) : String
+    suffix = type == "Servo" ? "Servo" : "Motor"
+    "ecrl__#{name}#{suffix}"
+  end
+
   def self.motor_field(name : String) : String
-    "ecrl__#{name}Motor"
+    hardware_field(name, "DcMotor")
   end
 
   def self.translate_gamepad(expr : String) : String
-    expr.gsub("gpad.", "gamepad1.")
+    expr.gsub("gpad2.", "gamepad2.").gsub("gpad.", "gamepad1.")
   end
 
   def self.format_value_expr(expr : ValueExpr) : String
@@ -36,6 +41,21 @@ class ValueFormatter
       "-#{format_value_expr(expr.inner)}"
     else
       raise "[CODEGEN] Unsupported value expression type: #{expr.class}"
+    end
+  end
+
+  def self.format_condition(cond : ConditionExpr) : String
+    case cond
+    when ValueCondition
+      format_value_expr(cond.value)
+    when ComparisonCondition
+      "#{format_value_expr(cond.left)} #{cond.operator} #{format_value_expr(cond.right)}"
+    when AndCondition
+      "(#{format_condition(cond.left)} && #{format_condition(cond.right)})"
+    when OrCondition
+      "(#{format_condition(cond.left)} || #{format_condition(cond.right)})"
+    else
+      raise "[CODEGEN] Unsupported condition type: #{cond.class}"
     end
   end
 

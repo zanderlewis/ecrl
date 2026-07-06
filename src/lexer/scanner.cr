@@ -20,8 +20,14 @@ class LexerScanner
         @position += 1
         next
       elsif current_char == '!'
-        skip_comment
-        next
+        if peek_next == '='
+          tokens << Token.new(TokenType::NotEq, "!=", @line)
+          @position += 2
+          next
+        else
+          skip_comment
+          next
+        end
       end
 
       case current_char
@@ -32,9 +38,49 @@ class LexerScanner
       when '-' then tokens << Token.new(TokenType::Minus, "-", @line); @position += 1; next
       when '(' then tokens << Token.new(TokenType::OpenParen, "(", @line); @position += 1; next
       when ')' then tokens << Token.new(TokenType::CloseParen, ")", @line); @position += 1; next
-      when '>' then tokens << Token.new(TokenType::GreaterThan, ">", @line); @position += 1; next
-      when '<' then tokens << Token.new(TokenType::LessThan, "<", @line); @position += 1; next
-      when '=' then tokens << Token.new(TokenType::Assignment, "=", @line); @position += 1; next
+      when '>'
+        if peek_next == '='
+          tokens << Token.new(TokenType::GreaterEq, ">=", @line)
+          @position += 2
+        else
+          tokens << Token.new(TokenType::GreaterThan, ">", @line)
+          @position += 1
+        end
+        next
+      when '<'
+        if peek_next == '='
+          tokens << Token.new(TokenType::LessEq, "<=", @line)
+          @position += 2
+        else
+          tokens << Token.new(TokenType::LessThan, "<", @line)
+          @position += 1
+        end
+        next
+      when '='
+        if peek_next == '='
+          tokens << Token.new(TokenType::EqEq, "==", @line)
+          @position += 2
+        else
+          tokens << Token.new(TokenType::Assignment, "=", @line)
+          @position += 1
+        end
+        next
+      when '&'
+        if peek_next == '&'
+          tokens << Token.new(TokenType::AndAnd, "&&", @line)
+          @position += 2
+        else
+          raise "[LEXER] Unexpected character '&' at line #{@line}"
+        end
+        next
+      when '|'
+        if peek_next == '|'
+          tokens << Token.new(TokenType::OrOr, "||", @line)
+          @position += 2
+        else
+          raise "[LEXER] Unexpected character '|' at line #{@line}"
+        end
+        next
       end
 
       if current_char == '"'
@@ -146,6 +192,7 @@ class LexerScanner
            when "FORWARD"    then TokenType::Forward
            when "REVERSE"    then TokenType::Reverse
            when "dc"         then TokenType::Dc
+           when "servo"      then TokenType::Servo
            when "var"        then TokenType::Var
            when "teleop"     then TokenType::TeleOp
            when "group"      then TokenType::Group

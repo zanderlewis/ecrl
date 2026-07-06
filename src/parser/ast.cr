@@ -20,6 +20,36 @@ class NegatedValueExpr < ValueExpr
   def initialize(@inner); end
 end
 
+abstract class ConditionExpr; end
+
+class ValueCondition < ConditionExpr
+  property value : ValueExpr
+
+  def initialize(@value); end
+end
+
+class ComparisonCondition < ConditionExpr
+  property left : ValueExpr
+  property operator : String
+  property right : ValueExpr
+
+  def initialize(@left, @operator, @right); end
+end
+
+class AndCondition < ConditionExpr
+  property left : ConditionExpr
+  property right : ConditionExpr
+
+  def initialize(@left, @right); end
+end
+
+class OrCondition < ConditionExpr
+  property left : ConditionExpr
+  property right : ConditionExpr
+
+  def initialize(@left, @right); end
+end
+
 abstract class TelemetryValue; end
 
 class TelemetryStringLiteral < TelemetryValue
@@ -77,14 +107,18 @@ class StopExpr < Expression
   def initialize(@target); end
 end
 
+class SetPositionExpr < Expression
+  property target : String, value : ValueExpr
+
+  def initialize(@target, @value); end
+end
+
 class IfStatement < Expression
-  property condition_left : ValueExpr
-  property operator : String?
-  property condition_right : ValueExpr?
+  property condition : ConditionExpr
   property then_branch = [] of Expression
   property else_branch = [] of Expression
 
-  def initialize(@condition_left, @operator = nil, @condition_right = nil); end
+  def initialize(@condition); end
 end
 
 class VarReassignmentExpr < Expression

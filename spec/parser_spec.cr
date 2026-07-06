@@ -121,7 +121,7 @@ describe Parser do
   end
 
   it "rejects undeclared motor devices" do
-    expect_raises(Exception, /Unknown device 'intake'/) do
+    expect_raises(Exception, /Unknown motor 'intake'/) do
       parse_ecr(<<-'ECR')
         define { }
         teleop "Test" {
@@ -182,6 +182,55 @@ describe Parser do
     ECR
 
     program.hardware["shooter"].should eq("DcMotorEx")
+  end
+
+  it "parses compound if conditions" do
+    program = parse_ecr(<<-'ECR')
+      define { var threshold = 0.5 }
+      teleop "Test" {
+        loop {
+          if gpad.right_trigger > threshold && gpad2.square {
+            robot.tel.update()
+          }
+        }
+      }
+    ECR
+
+    if_stmt = program.body[0].as(IfStatement)
+    and_cond = if_stmt.condition.as(AndCondition)
+    comparison = and_cond.left.as(ComparisonCondition)
+    comparison.operator.should eq(">")
+    comparison.right.as(IdentifierValueExpr).name.should eq("threshold")
+    and_cond.right.as(ValueCondition).value.as(IdentifierValueExpr).name.should eq("gpad2.square")
+  end
+
+  it "parses servo declarations and set_position" do
+    program = parse_ecr(<<-'ECR')
+      define { servo "wrist" }
+      teleop "Test" {
+        loop {
+          robot.wrist.set_position(0.5)
+        }
+      }
+    ECR
+
+    program.hardware["wrist"].should eq("Servo")
+    set_pos = program.body[0].as(SetPositionExpr)
+    set_pos.target.should eq("wrist")
+    set_pos.value.as(NumberValueExpr).value.should eq("0.5")
+  end
+
+  it "rejects motor methods on servos" do
+    expect_raises(Exception, /is a servo/) do
+      parse_ecr(<<-'ECR')
+        define { servo "wrist" }
+        teleop "Test" {
+          loop {
+            robot.wrist.set_power(1.0)
+          }
+        }
+      ECR
+    end
   end
 end
 

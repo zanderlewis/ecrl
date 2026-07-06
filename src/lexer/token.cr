@@ -6,6 +6,7 @@ enum TokenType
   Forward
   Reverse
   Dc
+  Servo
   Var
   TeleOp
   Group
@@ -24,7 +25,13 @@ enum TokenType
   OpenParen
   CloseParen
   GreaterThan
+  GreaterEq
   LessThan
+  LessEq
+  EqEq
+  NotEq
+  AndAnd
+  OrOr
   Assignment
   Dot # reserved
   EOF

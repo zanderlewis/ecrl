@@ -67,10 +67,30 @@ record Program,
           raise "[PARSER] drive() requires a drivetrain in define"
         end
       when SetPowerExpr, SetVelocityExpr, StopExpr
-        unless hardware.has_key?(expr.target)
-          raise "[PARSER] Unknown device '#{expr.target}' — declare it with dc \"#{expr.target}\" in define"
-        end
+        validate_motor!(expr.target)
+      when SetPositionExpr
+        validate_servo!(expr.target)
       end
+    end
+  end
+
+  private def validate_motor!(name : String)
+    type = hardware[name]?
+    unless type == "DcMotor" || type == "DcMotorEx"
+      if type == "Servo"
+        raise "[PARSER] '#{name}' is a servo — use set_position instead of motor methods"
+      end
+      raise "[PARSER] Unknown motor '#{name}' — declare it with dc \"#{name}\" in define"
+    end
+  end
+
+  private def validate_servo!(name : String)
+    type = hardware[name]?
+    unless type == "Servo"
+      if type == "DcMotor" || type == "DcMotorEx"
+        raise "[PARSER] '#{name}' is a motor — use set_power/set_velocity instead of set_position"
+      end
+      raise "[PARSER] Unknown servo '#{name}' — declare it with servo \"#{name}\" in define"
     end
   end
 

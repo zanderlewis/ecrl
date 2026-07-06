@@ -19,6 +19,8 @@ class DefinitionParser
         parse_drivetrain(chassis_map)
       when TokenType::Dc
         parse_dc_motor(hardware_map)
+      when TokenType::Servo
+        parse_servo(hardware_map)
       when TokenType::Var
         parse_variable(variables)
       else
@@ -72,6 +74,15 @@ class DefinitionParser
       raise "[PARSER] Duplicate dc motor '#{hw_str}' on line #{@stream.peek.line}"
     end
     hardware_map[hw_str] = "DcMotor"
+  end
+
+  private def parse_servo(hardware_map : Hash(String, String))
+    @stream.consume(TokenType::Servo)
+    hw_str = @stream.consume(TokenType::StringLiteral).value
+    if hardware_map.has_key?(hw_str)
+      raise "[PARSER] Duplicate servo '#{hw_str}' on line #{@stream.peek.line}"
+    end
+    hardware_map[hw_str] = "Servo"
   end
 
   private def parse_variable(variables : Hash(String, Variable))

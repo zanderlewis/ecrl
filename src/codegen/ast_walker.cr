@@ -2,7 +2,13 @@ require "../parser/ast"
 require "./formatter"
 
 class AstWalker
-  def self.walk_ast(expr : Expression, io : IO, indent : String, inline : Bool = false)
+  def self.walk_ast(
+    expr : Expression,
+    io : IO,
+    indent : String,
+    hardware : Hash(String, String),
+    inline : Bool = false,
+  )
     case expr
     when DriveMecanumExpr
       g_y = ValueFormatter.format_value_expr(expr.y)
@@ -10,11 +16,11 @@ class AstWalker
       g_rx = ValueFormatter.format_value_expr(expr.rx)
       io << (inline ? "" : indent) << "driveMecanum(-#{g_y}, #{g_x}, #{g_rx});\n"
     when SetPowerExpr
-      field = ValueFormatter.motor_field(expr.target)
+      field = ValueFormatter.hardware_field(expr.target, hardware[expr.target].not_nil!)
       target_val = ValueFormatter.format_value_expr(expr.value)
       io << (inline ? "" : indent) << "#{field}.setPower(#{target_val});\n"
     when SetVelocityExpr
-      field = ValueFormatter.motor_field(expr.target)
+      field = ValueFormatter.hardware_field(expr.target, hardware[expr.target].not_nil!)
       target_val = ValueFormatter.format_value_expr(expr.value)
       ticks = expr.ticks_per_rev
       if ticks.nil?
@@ -23,8 +29,16 @@ class AstWalker
       ticks_val = ValueFormatter.format_value_expr(ticks)
       io << (inline ? "" : indent) << "#{field}.setVelocity(((#{target_val}) * #{ticks_val}) / 60.0);\n"
     when StopExpr
-      field = ValueFormatter.motor_field(expr.target)
-      io << (inline ? "" : indent) << "#{field}.setPower(0.0);\n"
+      field = ValueFormatter.hardware_field(expr.target, hardware[expr.target].not_nil!)
+      if hardware[expr.target] == "DcMotorEx"
+        io << (inline ? "" : indent) << "#{field}.setVelocity(0);\n"
+      else
+        io << (inline ? "" : indent) << "#{field}.setPower(0.0);\n"
+      end
+    when SetPositionExpr
+      field = ValueFormatter.hardware_field(expr.target, "Servo")
+      position = ValueFormatter.format_value_expr(expr.value)
+      io << (inline ? "" : indent) << "#{field}.setPosition(#{position});\n"
     when VarReassignmentExpr
       value = ValueFormatter.format_value_expr(expr.value)
       io << (inline ? "" : indent) << "#{expr.var_name} = #{value};\n"
@@ -38,25 +52,19 @@ class AstWalker
     when TelemetryUpdateExpr
       io << (inline ? "" : indent) << "telemetry.update();\n"
     when IfStatement
-      g_cond = ValueFormatter.format_value_expr(expr.condition_left)
+      cond = ValueFormatter.format_condition(expr.condition)
 
-      io << (inline ? "" : indent)
-      if op = expr.operator
-        right = ValueFormatter.format_value_expr(expr.condition_right.not_nil!)
-        io << "if (#{g_cond} #{op} #{right}) {\n"
-      else
-        io << "if (#{g_cond}) {\n"
-      end
+      io << (inline ? "" : indent) << "if (#{cond}) {\n"
 
-      expr.then_branch.each { |child| walk_ast(child, io, indent + "    ", inline: false) }
+      expr.then_branch.each { |child| walk_ast(child, io, indent + "    ", hardware, inline: false) }
 
       if !expr.else_branch.empty?
         if expr.else_branch.size == 1 && expr.else_branch.first.is_a?(IfStatement)
           io << indent << "} else "
-          walk_ast(expr.else_branch.first, io, indent, inline: true)
+          walk_ast(expr.else_branch.first, io, indent, hardware, inline: true)
         else
           io << indent << "} else {\n"
-          expr.else_branch.each { |child| walk_ast(child, io, indent + "    ", inline: false) }
+          expr.else_branch.each { |child| walk_ast(child, io, indent + "    ", hardware, inline: false) }
           io << indent << "}\n"
         end
       else

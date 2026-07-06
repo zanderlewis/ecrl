@@ -2,6 +2,7 @@ require "../lexer/token"
 require "./ast"
 require "./types"
 require "./token_stream"
+require "./condition_parser"
 
 module ValueExprParser
   def self.parse(stream : TokenStream) : ValueExpr
@@ -84,6 +85,8 @@ class StatementParser
       end
     elsif !method_call.nil? && (method_call == "set_power" || method_call == "set_velocity")
       return parse_motor_method(device_name, method_call)
+    elsif !method_call.nil? && method_call == "set_position"
+      return parse_servo_method(device_name)
     elsif !method_call.nil? && method_call == "stop"
       @stream.consume(TokenType::OpenParen)
       @stream.consume(TokenType::CloseParen)
@@ -141,23 +144,19 @@ class StatementParser
     end
   end
 
+  private def parse_servo_method(device_name : String) : SetPositionExpr
+    @stream.consume(TokenType::OpenParen)
+    val = ValueExprParser.parse(@stream)
+    @stream.consume(TokenType::CloseParen)
+    SetPositionExpr.new(device_name, val)
+  end
+
   def parse_if_statement : IfStatement
     @stream.consume(TokenType::If)
-
-    cond_left = ValueExprParser.parse_identifier(@stream)
-    op : String? = nil
-    cond_right : ValueExpr? = nil
-
-    if @stream.peek.type == TokenType::GreaterThan
-      op = @stream.consume(TokenType::GreaterThan).value
-      cond_right = ValueExprParser.parse(@stream)
-    elsif @stream.peek.type == TokenType::LessThan
-      op = @stream.consume(TokenType::LessThan).value
-      cond_right = ValueExprParser.parse(@stream)
-    end
+    condition = ConditionParser.parse(@stream)
 
     @stream.consume(TokenType::OpenBrace)
-    if_node = IfStatement.new(cond_left, op, cond_right)
+    if_node = IfStatement.new(condition)
     if_node.then_branch = parse_block_statements
     @stream.consume(TokenType::CloseBrace)
 
