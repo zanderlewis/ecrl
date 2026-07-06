@@ -7,7 +7,7 @@ require "./subroutines"
 class JavaCompiler
   LOOP_BODY_INDENT = "            "
 
-  def initialize(@program : Program)
+  def initialize(@program : Program, @package_name : String = @program.package)
   end
 
   def compile : String
@@ -16,13 +16,13 @@ class JavaCompiler
       generate_class_header(io)
       generate_member_declarations(io)
       generate_run_op_mode_method(io)
-      generate_subroutines(io)
+      generate_subroutines(io) if @program.uses_drive?
       io << "}\n"
     end
   end
 
   private def generate_package_and_imports(io : IO)
-    io << "package org.firstinspires.ftc.teamcode.teleop;\n\n"
+    io << "package #{@package_name};\n\n"
     io << "import com.qualcomm.robotcore.eventloop.opmode.TeleOp;\n"
     io << "import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;\n"
     io << "import com.qualcomm.robotcore.hardware.DcMotor;\n"
@@ -65,7 +65,8 @@ class JavaCompiler
     end
 
     io << "        }\n"
-    io << "    }\n\n"
+    io << "    }\n"
+    io << "\n" unless @program.uses_drive?
   end
 
   private def generate_chassis_initialization(io : IO)
@@ -102,6 +103,7 @@ class JavaCompiler
   end
 
   private def generate_subroutines(io : IO)
+    io << "\n"
     MecanumSubroutine.generate(io)
   end
 end

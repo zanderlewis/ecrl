@@ -7,6 +7,7 @@ end
 describe Parser do
   it "parses module name and teleop metadata" do
     program = parse_ecr(<<-'ECR')
+      package "com.myteam.teleop"
       module "MyRobot"
       define { }
       teleop "Drive Mode" group "Main" {
@@ -14,6 +15,7 @@ describe Parser do
       }
     ECR
 
+    program.package.should eq("com.myteam.teleop")
     program.module_name.should eq("MyRobot")
     program.name.should eq("Drive Mode")
     program.group.should eq("Main")
@@ -151,6 +153,17 @@ describe Parser do
           dc "intake"
           dc "intake"
         }
+        teleop "Test" {
+          loop { }
+        }
+      ECR
+    end
+  end
+
+  it "rejects invalid package names" do
+    expect_raises(Exception, /Invalid Java package name/) do
+      parse_ecr(<<-'ECR')
+        package "not a valid package"
         teleop "Test" {
           loop { }
         }

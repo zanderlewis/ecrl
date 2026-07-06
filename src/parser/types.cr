@@ -1,5 +1,7 @@
 require "./ast"
 
+DEFAULT_JAVA_PACKAGE = "org.firstinspires.ftc.teamcode.teleop"
+
 record ChassisWheel,
   name : String,
   direction : String
@@ -15,13 +17,29 @@ record Program,
   vars : Hash(String, Variable),
   name : String,
   group : String,
-  body : Array(Expression) do
+  body : Array(Expression),
+  package : String = DEFAULT_JAVA_PACKAGE do
   REQUIRED_CHASSIS_KEYS = ["fl", "fr", "bl", "br"]
 
   def validate!
+    validate_package!
     validate_chassis!
     resolve_encoder_motors!
     validate_body!(body)
+  end
+
+  def uses_drive? : Bool
+    found = false
+    each_statement(body) do |expr|
+      found = true if expr.is_a?(DriveMecanumExpr)
+    end
+    found
+  end
+
+  private def validate_package!
+    unless package =~ /\A[a-zA-Z_]\w*(\.[a-zA-Z_]\w*)*\z/
+      raise "[PARSER] Invalid Java package name: '#{package}'"
+    end
   end
 
   private def validate_chassis!

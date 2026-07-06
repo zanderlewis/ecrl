@@ -34,7 +34,10 @@ This writes Java output to `path/to/program.ecr.java`. You can also invoke the c
 
 ```bash
 ./bin/ecrl -s path/to/program.ecr -o path/to/output.java
+./bin/ecrl -s path/to/program.ecr -o path/to/output.java -p com.myteam.teleop
 ```
+
+The `-p` / `--package` flag overrides any `package` directive in the source file.
 
 ### Run tests
 
@@ -47,6 +50,7 @@ just test
 An ECRL program has three main sections:
 
 ```ecr
+package "org.firstinspires.ftc.teamcode.teleop"
 module "MyRobot"
 
 define {
@@ -78,6 +82,7 @@ teleop "Drive Mode" group "Main" {
 ```
 
 - `!` starts a line comment
+- `package` sets the generated Java package (default: `org.firstinspires.ftc.teamcode.teleop`)
 - `module` sets the generated Java class name
 - `define` declares hardware, variables, and the mecanum drivetrain
 - `teleop` defines the FTC `@TeleOp` name, group, and main loop

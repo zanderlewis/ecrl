@@ -139,6 +139,7 @@ class LexerScanner
     word = @source[start...@position]
 
     type = case word
+           when "package"  then TokenType::Package
            when "module"     then TokenType::Module
            when "define"     then TokenType::Define
            when "drivetrain" then TokenType::DriveTrain

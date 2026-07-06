@@ -14,6 +14,7 @@ class Parser
     module_name = "ECRLOpMode"
     teleop_name = "ECRLOpMode"
     group_name = "ECRL Teleop"
+    package_name = DEFAULT_JAVA_PACKAGE
     execution_blocks = [] of Expression
     hardware_map = {} of String => String
     chassis_map = {} of String => ChassisWheel
@@ -21,6 +22,9 @@ class Parser
 
     while @stream.peek.type != TokenType::EOF
       case @stream.peek.type
+      when TokenType::Package
+        @stream.consume(TokenType::Package)
+        package_name = @stream.consume(TokenType::StringLiteral).value
       when TokenType::Module
         @stream.consume(TokenType::Module)
         module_name = @stream.consume(TokenType::StringLiteral).value
@@ -62,6 +66,7 @@ class Parser
       name: teleop_name,
       group: group_name,
       body: execution_blocks,
+      package: package_name,
     )
     program.validate!
     program

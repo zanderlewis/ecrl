@@ -1,8 +1,8 @@
 require "./spec_helper"
 
-def compile_ecr(source : String) : String
+def compile_ecr(source : String, package : String? = nil) : String
   program = Parser.new(Lexer.new(source).tokenize).parse_program
-  JavaCompiler.new(program).compile
+  JavaCompiler.new(program, package || program.package).compile
 end
 
 describe ValueFormatter do
@@ -85,5 +85,80 @@ describe JavaCompiler do
         }
       ECR
     end
+  end
+
+  it "uses the default Java package" do
+    output = compile_ecr(<<-'ECR')
+      define { dc "intake" }
+      teleop "Test" {
+        loop {
+          robot.intake.set_power(1.0)
+        }
+      }
+    ECR
+
+    output.should contain("package org.firstinspires.ftc.teamcode.teleop;")
+  end
+
+  it "uses a custom package from source" do
+    output = compile_ecr(<<-'ECR')
+      package "com.myteam.teleop"
+      define { dc "intake" }
+      teleop "Test" {
+        loop {
+          robot.intake.set_power(1.0)
+        }
+      }
+    ECR
+
+    output.should contain("package com.myteam.teleop;")
+  end
+
+  it "allows the compiler package to override the source package" do
+    source = <<-ECR
+      package "com.myteam.teleop"
+      define { dc "intake" }
+      teleop "Test" {
+        loop {
+          robot.intake.set_power(1.0)
+        }
+      }
+    ECR
+    output = compile_ecr(source, "com.override.teleop")
+
+    output.should contain("package com.override.teleop;")
+  end
+
+  it "omits driveMecanum when drive is not used" do
+    output = compile_ecr(<<-'ECR')
+      define { dc "intake" }
+      teleop "Test" {
+        loop {
+          robot.intake.set_power(1.0)
+        }
+      }
+    ECR
+
+    output.should_not contain("private void driveMecanum")
+  end
+
+  it "includes driveMecanum when drive is used" do
+    output = compile_ecr(<<-'ECR')
+      define {
+        drivetrain {
+          fl: "leftFront"  FORWARD
+          fr: "rightFront" REVERSE
+          bl: "leftBack"   FORWARD
+          br: "rightBack"  FORWARD
+        }
+      }
+      teleop "Test" {
+        loop {
+          drive(gpad.left_stick_y, gpad.left_stick_x, gpad.right_stick_x)
+        }
+      }
+    ECR
+
+    output.should contain("private void driveMecanum")
   end
 end

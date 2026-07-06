@@ -1,4 +1,5 @@
 enum TokenType
+  Package
   Module
   Define
   DriveTrain
