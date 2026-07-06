@@ -44,7 +44,15 @@ describe Parser do
 
   it "parses drive and motor statements" do
     program = parse_ecr(<<-'ECR')
-      define { dc "intake" }
+      define {
+        drivetrain {
+          fl: "leftFront"  FORWARD
+          fr: "rightFront" REVERSE
+          bl: "leftBack"   FORWARD
+          br: "rightBack"  FORWARD
+        }
+        dc "intake"
+      }
       teleop "Test" {
         loop {
           drive(gpad.left_stick_y, gpad.left_stick_x, gpad.right_stick_x)
@@ -58,11 +66,11 @@ describe Parser do
     body.size.should eq(3)
 
     drive = body[0].as(DriveMecanumExpr)
-    drive.y.should eq("gpad.left_stick_y")
+    drive.y.as(IdentifierValueExpr).name.should eq("gpad.left_stick_y")
 
     set_power = body[1].as(SetPowerExpr)
     set_power.target.should eq("intake")
-    set_power.value.should eq("1.0")
+    set_power.value.as(NumberValueExpr).value.should eq("1.0")
 
     body[2].should be_a(StopExpr)
   end
@@ -108,6 +116,59 @@ describe Parser do
     expect_raises(Exception, /Unexpected token/) do
       parse_ecr("typo")
     end
+  end
+
+  it "rejects undeclared motor devices" do
+    expect_raises(Exception, /Unknown device 'intake'/) do
+      parse_ecr(<<-'ECR')
+        define { }
+        teleop "Test" {
+          loop {
+            robot.intake.set_power(1.0)
+          }
+        }
+      ECR
+    end
+  end
+
+  it "rejects drive without a drivetrain" do
+    expect_raises(Exception, /drive\(\) requires a drivetrain/) do
+      parse_ecr(<<-'ECR')
+        define { }
+        teleop "Test" {
+          loop {
+            drive(gpad.left_stick_y, gpad.left_stick_x, gpad.right_stick_x)
+          }
+        }
+      ECR
+    end
+  end
+
+  it "rejects duplicate dc motor declarations" do
+    expect_raises(Exception, /Duplicate dc motor/) do
+      parse_ecr(<<-'ECR')
+        define {
+          dc "intake"
+          dc "intake"
+        }
+        teleop "Test" {
+          loop { }
+        }
+      ECR
+    end
+  end
+
+  it "upgrades motors to DcMotorEx when set_velocity is used" do
+    program = parse_ecr(<<-'ECR')
+      define { dc "shooter" }
+      teleop "Test" {
+        loop {
+          robot.shooter.set_velocity(6000.0, 28.0)
+        }
+      }
+    ECR
+
+    program.hardware["shooter"].should eq("DcMotorEx")
   end
 end
 

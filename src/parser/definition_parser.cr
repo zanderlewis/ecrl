@@ -55,6 +55,10 @@ class DefinitionParser
                     "FORWARD"
                   end
 
+      if chassis_map.has_key?(id)
+        raise "[PARSER] Duplicate drivetrain wheel '#{id}' on line #{@stream.peek.line}"
+      end
+
       chassis_map[id] = ChassisWheel.new(name: hw_str, direction: direction)
     end
 
@@ -64,12 +68,18 @@ class DefinitionParser
   private def parse_dc_motor(hardware_map : Hash(String, String))
     @stream.consume(TokenType::Dc)
     hw_str = @stream.consume(TokenType::StringLiteral).value
+    if hardware_map.has_key?(hw_str)
+      raise "[PARSER] Duplicate dc motor '#{hw_str}' on line #{@stream.peek.line}"
+    end
     hardware_map[hw_str] = "DcMotor"
   end
 
   private def parse_variable(variables : Hash(String, Variable))
     @stream.consume(TokenType::Var)
     name = @stream.consume(TokenType::Identifier).value
+    if variables.has_key?(name)
+      raise "[PARSER] Duplicate variable '#{name}' on line #{@stream.peek.line}"
+    end
     @stream.consume(TokenType::Assignment)
 
     value = case @stream.peek.type

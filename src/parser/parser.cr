@@ -44,7 +44,7 @@ class Parser
         @stream.consume(TokenType::Loop)
         @stream.consume(TokenType::OpenBrace)
 
-        stmt_parser = StatementParser.new(@stream, variables, hardware_map)
+        stmt_parser = StatementParser.new(@stream, variables)
         execution_blocks = stmt_parser.parse_block_statements
 
         @stream.consume(TokenType::CloseBrace)

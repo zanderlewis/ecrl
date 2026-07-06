@@ -3,8 +3,33 @@ require "./ast"
 require "./types"
 require "./token_stream"
 
+module ValueExprParser
+  def self.parse(stream : TokenStream) : ValueExpr
+    if stream.peek.type == TokenType::Minus
+      stream.consume(TokenType::Minus)
+      return NegatedValueExpr.new(parse(stream))
+    end
+
+    case stream.peek.type
+    when TokenType::NumberLiteral
+      NumberValueExpr.new(stream.consume(TokenType::NumberLiteral).value)
+    when TokenType::Identifier
+      IdentifierValueExpr.new(stream.consume(TokenType::Identifier).value)
+    else
+      raise "[PARSER] Expected number or identifier on line #{stream.peek.line}"
+    end
+  end
+
+  def self.parse_identifier(stream : TokenStream) : IdentifierValueExpr
+    unless stream.peek.type == TokenType::Identifier
+      raise "[PARSER] Expected identifier on line #{stream.peek.line}"
+    end
+    IdentifierValueExpr.new(stream.consume(TokenType::Identifier).value)
+  end
+end
+
 class StatementParser
-  def initialize(@stream : TokenStream, @variables : Hash(String, Variable), @hardware_map : Hash(String, String))
+  def initialize(@stream : TokenStream, @variables : Hash(String, Variable))
   end
 
   def parse_statement : Expression
@@ -16,7 +41,7 @@ class StatementParser
         return parse_drive_call
       elsif @variables.has_key?(id) && @stream.peek.type == TokenType::Assignment
         @stream.consume(TokenType::Assignment)
-        return VarReassignmentExpr.new(id, parse_signed_value)
+        return VarReassignmentExpr.new(id, ValueExprParser.parse(@stream))
       elsif id.starts_with?("robot.")
         return parse_robot_method(id)
       end
@@ -31,32 +56,13 @@ class StatementParser
 
   private def parse_drive_call : DriveMecanumExpr
     @stream.consume(TokenType::OpenParen)
-    y = @stream.consume(TokenType::Identifier).value
+    y = ValueExprParser.parse_identifier(@stream)
     @stream.consume(TokenType::Comma) if @stream.peek.type == TokenType::Comma
-    x = @stream.consume(TokenType::Identifier).value
+    x = ValueExprParser.parse_identifier(@stream)
     @stream.consume(TokenType::Comma) if @stream.peek.type == TokenType::Comma
-    rx = @stream.consume(TokenType::Identifier).value
+    rx = ValueExprParser.parse_identifier(@stream)
     @stream.consume(TokenType::CloseParen)
     DriveMecanumExpr.new(y, x, rx)
-  end
-
-  private def parse_signed_value : String
-    prefix = ""
-    if @stream.peek.type == TokenType::Minus
-      @stream.consume(TokenType::Minus)
-      prefix = "-"
-    end
-
-    val = case @stream.peek.type
-          when TokenType::NumberLiteral
-            @stream.consume(TokenType::NumberLiteral).value
-          when TokenType::Identifier
-            @stream.consume(TokenType::Identifier).value
-          else
-            raise "[PARSER] Expected number or identifier on line #{@stream.peek.line}"
-          end
-
-    prefix + val
   end
 
   private def parse_robot_method(id : String) : Expression
@@ -111,40 +117,19 @@ class StatementParser
       TelemetryInterpolatedString.from_lexer(@stream.consume(TokenType::InterpolatedString).value)
     when TokenType::StringLiteral
       TelemetryStringLiteral.new(@stream.consume(TokenType::StringLiteral).value)
-    when TokenType::Minus
-      @stream.consume(TokenType::Minus)
-      TelemetryRawExpr.new("-" + parse_value_arg)
     else
-      TelemetryRawExpr.new(parse_value_arg)
-    end
-  end
-
-  private def parse_value_arg : String
-    case @stream.peek.type
-    when TokenType::NumberLiteral
-      @stream.consume(TokenType::NumberLiteral).value
-    when TokenType::Identifier
-      @stream.consume(TokenType::Identifier).value
-    else
-      raise "[PARSER] Expected number or identifier for telemetry argument on line #{@stream.peek.line}"
+      TelemetryRawExpr.new(ValueExprParser.parse(@stream))
     end
   end
 
   private def parse_motor_method(device_name : String, method_call : String) : Expression
     @stream.consume(TokenType::OpenParen)
-    val = parse_signed_value
+    val = ValueExprParser.parse(@stream)
 
     ticks_per_rev = nil
     if method_call == "set_velocity" && @stream.peek.type == TokenType::Comma
       @stream.consume(TokenType::Comma)
-      ticks_per_rev = case @stream.peek.type
-                      when TokenType::NumberLiteral
-                        @stream.consume(TokenType::NumberLiteral).value
-                      when TokenType::Identifier
-                        @stream.consume(TokenType::Identifier).value
-                      else
-                        raise "[PARSER] Expected ticks_per_rev value on line #{@stream.peek.line}"
-                      end
+      ticks_per_rev = ValueExprParser.parse(@stream)
     end
 
     @stream.consume(TokenType::CloseParen)
@@ -152,7 +137,6 @@ class StatementParser
     if method_call == "set_power"
       SetPowerExpr.new(device_name, val)
     else
-      @hardware_map[device_name] = "DcMotorEx"
       SetVelocityExpr.new(device_name, val, ticks_per_rev)
     end
   end
@@ -160,16 +144,16 @@ class StatementParser
   def parse_if_statement : IfStatement
     @stream.consume(TokenType::If)
 
-    cond_left = @stream.consume(TokenType::Identifier).value
+    cond_left = ValueExprParser.parse_identifier(@stream)
     op : String? = nil
-    cond_right : String? = nil
+    cond_right : ValueExpr? = nil
 
     if @stream.peek.type == TokenType::GreaterThan
       op = @stream.consume(TokenType::GreaterThan).value
-      cond_right = @stream.consume(TokenType::NumberLiteral).value
+      cond_right = ValueExprParser.parse(@stream)
     elsif @stream.peek.type == TokenType::LessThan
       op = @stream.consume(TokenType::LessThan).value
-      cond_right = @stream.consume(TokenType::NumberLiteral).value
+      cond_right = ValueExprParser.parse(@stream)
     end
 
     @stream.consume(TokenType::OpenBrace)

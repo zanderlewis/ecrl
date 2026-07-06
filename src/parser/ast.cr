@@ -1,5 +1,25 @@
 abstract class Expression; end
 
+abstract class ValueExpr; end
+
+class NumberValueExpr < ValueExpr
+  property value : String
+
+  def initialize(@value); end
+end
+
+class IdentifierValueExpr < ValueExpr
+  property name : String
+
+  def initialize(@name); end
+end
+
+class NegatedValueExpr < ValueExpr
+  property inner : ValueExpr
+
+  def initialize(@inner); end
+end
+
 abstract class TelemetryValue; end
 
 class TelemetryStringLiteral < TelemetryValue
@@ -28,25 +48,25 @@ record InterpolatedSegment,
   value : String
 
 class TelemetryRawExpr < TelemetryValue
-  property expr : String
+  property expr : ValueExpr
 
   def initialize(@expr); end
 end
 
 class DriveMecanumExpr < Expression
-  property y : String, x : String, rx : String
+  property y : ValueExpr, x : ValueExpr, rx : ValueExpr
 
   def initialize(@y, @x, @rx); end
 end
 
 class SetPowerExpr < Expression
-  property target : String, value : String
+  property target : String, value : ValueExpr
 
   def initialize(@target, @value); end
 end
 
 class SetVelocityExpr < Expression
-  property target : String, value : String, ticks_per_rev : String?
+  property target : String, value : ValueExpr, ticks_per_rev : ValueExpr?
 
   def initialize(@target, @value, @ticks_per_rev = nil); end
 end
@@ -58,9 +78,9 @@ class StopExpr < Expression
 end
 
 class IfStatement < Expression
-  property condition_left : String
+  property condition_left : ValueExpr
   property operator : String?
-  property condition_right : String?
+  property condition_right : ValueExpr?
   property then_branch = [] of Expression
   property else_branch = [] of Expression
 
@@ -69,7 +89,7 @@ end
 
 class VarReassignmentExpr < Expression
   property var_name : String
-  property value : String
+  property value : ValueExpr
 
   def initialize(@var_name, @value); end
 end

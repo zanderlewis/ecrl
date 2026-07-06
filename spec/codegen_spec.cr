@@ -27,6 +27,14 @@ describe ValueFormatter do
   it "translates gamepad references" do
     ValueFormatter.translate_gamepad("gpad.square").should eq("gamepad1.square")
   end
+
+  it "formats value expressions" do
+    ValueFormatter.format_value_expr(IdentifierValueExpr.new("gpad.square")).should eq("gamepad1.square")
+    ValueFormatter.format_value_expr(NumberValueExpr.new("1.0")).should eq("1.0")
+    ValueFormatter.format_value_expr(
+      NegatedValueExpr.new(IdentifierValueExpr.new("intake_power"))
+    ).should eq("-intake_power")
+  end
 end
 
 describe JavaCompiler do

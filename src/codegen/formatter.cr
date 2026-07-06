@@ -26,6 +26,19 @@ class ValueFormatter
     expr.gsub("gpad.", "gamepad1.")
   end
 
+  def self.format_value_expr(expr : ValueExpr) : String
+    case expr
+    when NumberValueExpr
+      expr.value
+    when IdentifierValueExpr
+      translate_gamepad(expr.name)
+    when NegatedValueExpr
+      "-#{format_value_expr(expr.inner)}"
+    else
+      raise "[CODEGEN] Unsupported value expression type: #{expr.class}"
+    end
+  end
+
   def self.format_telemetry_value(value : TelemetryValue) : String
     case value
     when TelemetryStringLiteral
@@ -33,7 +46,7 @@ class ValueFormatter
     when TelemetryInterpolatedString
       format_interpolated_string(value.segments)
     when TelemetryRawExpr
-      value.expr
+      format_value_expr(value.expr)
     else
       raise "[CODEGEN] Unsupported telemetry value type: #{value.class}"
     end
