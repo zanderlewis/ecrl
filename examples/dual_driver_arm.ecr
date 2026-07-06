@@ -1,0 +1,65 @@
+! A smaller example: driver 1 handles the drivetrain, driver 2 handles the arm.
+! Demonstrates servos, gamepad2, compound conditions, and variable comparisons.
+
+package "org.firstinspires.ftc.teamcode.teleop"
+module "DualDriverArm"
+
+define {
+    drivetrain {
+        fl: "frontLeft"  FORWARD
+        fr: "frontRight" REVERSE
+        bl: "backLeft"   FORWARD
+        br: "backRight"  REVERSE
+    }
+
+    var intake_speed = 0.8
+    var trigger_threshold = 0.35
+    var claw_open = 0.2
+    var claw_closed = 0.8
+    var arm_up = 0.9
+    var arm_down = 0.1
+
+    dc "intake"
+    servo "claw"
+    servo "arm"
+}
+
+teleop "Dual Driver Arm" group "TeleOp" {
+    loop {
+        ! Driver 1: mecanum drive
+        drive(gpad1.left_stick_y, gpad1.left_stick_x, gpad1.right_stick_x)
+
+        ! Driver 1: intake on triggers (with deadband-style threshold)
+        if gpad1.right_trigger > trigger_threshold {
+            robot.intake.set_power(intake_speed)
+        } else if gpad1.left_trigger > trigger_threshold {
+            robot.intake.set_power(-intake_speed)
+        } else {
+            robot.intake.stop()
+        }
+
+        ! Driver 2: arm presets and claw control
+        if gpad2.dpad_up {
+            robot.arm.set_position(arm_up)
+        } else if gpad2.dpad_down {
+            robot.arm.set_position(arm_down)
+        }
+
+        if gpad2.right_bumper && gpad2.left_bumper {
+            robot.claw.set_position(claw_closed)
+        } else if gpad2.right_bumper || gpad2.left_bumper {
+            robot.claw.set_position(claw_open)
+        }
+
+        ! Bump intake speed at runtime with dpad (driver 1)
+        if gpad1.dpad_up {
+            intake_speed = 1.0
+        } else if gpad1.dpad_down {
+            intake_speed = 0.5
+        }
+
+        robot.tel.show("Intake Speed", "#{intake_speed}")
+        robot.tel.show("Arm", "Driver 2 active")
+        robot.tel.update()
+    }
+}

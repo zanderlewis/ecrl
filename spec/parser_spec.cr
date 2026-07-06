@@ -57,7 +57,7 @@ describe Parser do
       }
       teleop "Test" {
         loop {
-          drive(gpad.left_stick_y, gpad.left_stick_x, gpad.right_stick_x)
+          drive(gpad1.left_stick_y, gpad1.left_stick_x, gpad1.right_stick_x)
           robot.intake.set_power(1.0)
           robot.intake.stop()
         }
@@ -68,7 +68,7 @@ describe Parser do
     body.size.should eq(3)
 
     drive = body[0].as(DriveMecanumExpr)
-    drive.y.as(IdentifierValueExpr).name.should eq("gpad.left_stick_y")
+    drive.y.as(IdentifierValueExpr).name.should eq("gpad1.left_stick_y")
 
     set_power = body[1].as(SetPowerExpr)
     set_power.target.should eq("intake")
@@ -139,7 +139,7 @@ describe Parser do
         define { }
         teleop "Test" {
           loop {
-            drive(gpad.left_stick_y, gpad.left_stick_x, gpad.right_stick_x)
+            drive(gpad1.left_stick_y, gpad1.left_stick_x, gpad1.right_stick_x)
           }
         }
       ECR
@@ -189,7 +189,7 @@ describe Parser do
       define { var threshold = 0.5 }
       teleop "Test" {
         loop {
-          if gpad.right_trigger > threshold && gpad2.square {
+          if gpad1.right_trigger > threshold && gpad2.square {
             robot.tel.update()
           }
         }

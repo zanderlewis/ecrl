@@ -23,10 +23,10 @@ describe Lexer do
   end
 
   it "tokenizes dotted identifiers" do
-    tokens = Lexer.new("gpad.left_stick_y robot.intake.set_power").tokenize
+    tokens = Lexer.new("gpad1.left_stick_y robot.intake.set_power").tokenize
     values = tokens[..-2].map &.value
 
-    values.should eq(["gpad.left_stick_y", "robot.intake.set_power"])
+    values.should eq(["gpad1.left_stick_y", "robot.intake.set_power"])
   end
 
   it "distinguishes plain and interpolated strings" do

@@ -25,24 +25,24 @@ describe ValueFormatter do
   end
 
   it "translates gamepad references" do
-    ValueFormatter.translate_gamepad("gpad.square").should eq("gamepad1.square")
+    ValueFormatter.translate_gamepad("gpad1.square").should eq("gamepad1.square")
     ValueFormatter.translate_gamepad("gpad2.square").should eq("gamepad2.square")
   end
 
   it "formats compound conditions" do
     cond = AndCondition.new(
       ComparisonCondition.new(
-        IdentifierValueExpr.new("gpad.right_trigger"),
+        IdentifierValueExpr.new("gpad1.right_trigger"),
         ">",
         NumberValueExpr.new("0.5"),
       ),
-      ValueCondition.new(IdentifierValueExpr.new("gpad.square")),
+      ValueCondition.new(IdentifierValueExpr.new("gpad1.square")),
     )
     ValueFormatter.format_condition(cond).should eq("(gamepad1.right_trigger > 0.5 && gamepad1.square)")
   end
 
   it "formats value expressions" do
-    ValueFormatter.format_value_expr(IdentifierValueExpr.new("gpad.square")).should eq("gamepad1.square")
+    ValueFormatter.format_value_expr(IdentifierValueExpr.new("gpad1.square")).should eq("gamepad1.square")
     ValueFormatter.format_value_expr(NumberValueExpr.new("1.0")).should eq("1.0")
     ValueFormatter.format_value_expr(
       NegatedValueExpr.new(IdentifierValueExpr.new("intake_power"))
@@ -167,7 +167,7 @@ describe JavaCompiler do
       }
       teleop "Test" {
         loop {
-          drive(gpad.left_stick_y, gpad.left_stick_x, gpad.right_stick_x)
+          drive(gpad1.left_stick_y, gpad1.left_stick_x, gpad1.right_stick_x)
         }
       }
     ECR
@@ -223,7 +223,7 @@ describe JavaCompiler do
       define { }
       teleop "Test" {
         loop {
-          if gpad.a && gpad.b || gpad.c > 0.5 {
+          if gpad1.a && gpad1.b || gpad1.c > 0.5 {
             robot.tel.update()
           }
         }

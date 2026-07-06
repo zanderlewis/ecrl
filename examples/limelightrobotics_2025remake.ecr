@@ -1,4 +1,6 @@
-! This would be the Java class name
+package "org.firstinspires.ftc.teamcode.teleop"
+
+! Class name
 module "ManualDrive"
 
 ! All robot and variable declarations must go here
@@ -35,35 +37,35 @@ define {
 teleop "Manual Drive" group "Main" {
     loop {
         ! Drivetrain handling
-        drive(gpad.left_stick_y, gpad.left_stick_x, gpad.right_stick_x)
+        drive(gpad1.left_stick_y, gpad1.left_stick_x, gpad1.right_stick_x)
 
         ! Mapping buttons to actions with variable reassignment
-        if gpad.square {
+        if gpad1.square {
             robot.intake.set_power(intake_power)
-        } else if gpad.cross {
+        } else if gpad1.cross {
             robot.intake.set_power(-intake_power)
         } else {
             robot.intake.stop()
         }
 
-        if gpad.left_bumper {
+        if gpad1.left_bumper {
             robot.turret.set_power(turret_power)
-        } else if gpad.right_bumper {
+        } else if gpad1.right_bumper {
             robot.turret.set_power(-turret_power)
         } else {
             robot.turret.stop()
         }
 
-        if gpad.dpad_up {
+        if gpad1.dpad_up {
             robot.loader.set_power(loader_power)
-        } else if gpad.dpad_down {
+        } else if gpad1.dpad_down {
             robot.loader.set_power(-loader_power)
         } else {
             robot.loader.stop()
         }
 
         ! Prevent accidental presses
-        if gpad.right_trigger > 0.5 {
+        if gpad1.right_trigger > 0.5 {
             robot.shooter.set_velocity(target_velocity, shooter_ticks)
         } else {
             robot.shooter.stop()

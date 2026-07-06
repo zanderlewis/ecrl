@@ -28,7 +28,7 @@ class ValueFormatter
   end
 
   def self.translate_gamepad(expr : String) : String
-    expr.gsub("gpad2.", "gamepad2.").gsub("gpad.", "gamepad1.")
+    expr.gsub("gpad2.", "gamepad2.").gsub("gpad1.", "gamepad1.")
   end
 
   def self.format_value_expr(expr : ValueExpr) : String

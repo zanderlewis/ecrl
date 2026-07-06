@@ -68,11 +68,11 @@ define {
 
 teleop "Drive Mode" group "Main" {
     loop {
-        drive(gpad.left_stick_y, gpad.left_stick_x, gpad.right_stick_x)
+        drive(gpad1.left_stick_y, gpad1.left_stick_x, gpad1.right_stick_x)
 
-        if gpad.square && gpad2.triangle {
+        if gpad1.square && gpad2.triangle {
             robot.intake.set_power(speed)
-        } else if gpad.right_trigger >= 0.5 {
+        } else if gpad1.right_trigger >= 0.5 {
             robot.intake.stop()
         }
 
@@ -88,7 +88,7 @@ teleop "Drive Mode" group "Main" {
 - `module` sets the generated Java class name
 - `define` declares hardware, variables, and the mecanum drivetrain
 - `teleop` defines the FTC `@TeleOp` name, group, and main loop
-- `gpad.*` maps to `gamepad1.*`; `gpad2.*` maps to `gamepad2.*`
+- `gpad1.*` maps to `gamepad1.*`; `gpad2.*` maps to `gamepad2.*`
 - `dc` declares motors; `servo` declares servos
 - `if` supports comparisons (`>`, `<`, `>=`, `<=`, `==`, `!=`), `&&`, and `||`
 - `robot.<device>.set_power/set_velocity/stop` controls motors; `set_position` controls servos
@@ -96,9 +96,16 @@ teleop "Drive Mode" group "Main" {
 
 ## Examples
 
-- [Limelight Robotics #23574 2025-2026 TeamCode re-creation](examples/limelightrobotics_2025remake.ecr)
+- [Limelight Robotics #23574 2025-2026 TeamCode re-creation](examples/limelightrobotics_2025remake.ecr) — full competition-style teleop with multiple motors
+- [Dual driver arm](examples/dual_driver_arm.ecr) — two-gamepad setup with servos, compound conditions, and runtime variable changes
 
-Compile it with:
+Compile an example with:
+
+```bash
+just buildrun examples/dual_driver_arm.ecr
+```
+
+Or the Limelight example:
 
 ```bash
 just buildrun examples/limelightrobotics_2025remake.ecr
