@@ -25,7 +25,7 @@ enum TokenType
   GreaterThan
   LessThan
   Assignment
-  Dot
+  Dot # reserved
   EOF
 end
 

@@ -1,0 +1,17 @@
+name: ecrl
+version: 0.0.0
+
+authors:
+  - Zander Lewis <zander@zanderlewis.dev>
+
+crystal: ">= 1.0.0"
+
+license: Apache-2.0
+
+description: |
+  Enka-Candler Robotics Language — a domain-specific language compiler
+  that translates ECRL source into FTC Java teleop code.
+
+targets:
+  ecrl:
+    main: src/entry.cr

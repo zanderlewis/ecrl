@@ -1,6 +1,7 @@
-alias b := build
-alias r := run
+alias b  := build
+alias r  := run
 alias br := buildrun
+alias t  := test
 
 # build the ECRL compiler
 build:
@@ -15,3 +16,7 @@ run SOURCE:
 # build and run
 buildrun SOURCE: build
 	just run {{SOURCE}}
+
+# run the test suite
+test:
+	crystal spec

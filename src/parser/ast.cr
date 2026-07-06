@@ -1,5 +1,38 @@
 abstract class Expression; end
 
+abstract class TelemetryValue; end
+
+class TelemetryStringLiteral < TelemetryValue
+  property value : String
+
+  def initialize(@value); end
+end
+
+class TelemetryInterpolatedString < TelemetryValue
+  property segments : Array(InterpolatedSegment)
+
+  def initialize(@segments); end
+
+  def self.from_lexer(raw : String) : TelemetryInterpolatedString
+    segments = [] of InterpolatedSegment
+    raw.split('\0').each_with_index do |part, i|
+      next if part.empty? && i.even?
+      segments << InterpolatedSegment.new(literal: i.even?, value: part)
+    end
+    new(segments)
+  end
+end
+
+record InterpolatedSegment,
+  literal : Bool,
+  value : String
+
+class TelemetryRawExpr < TelemetryValue
+  property expr : String
+
+  def initialize(@expr); end
+end
+
 class DriveMecanumExpr < Expression
   property y : String, x : String, rx : String
 
@@ -43,7 +76,7 @@ end
 
 class TelemetryAddDataExpr < Expression
   property label : String
-  property args : Array(String)
+  property args : Array(TelemetryValue)
 
   def initialize(@label, @args); end
 end
