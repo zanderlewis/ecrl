@@ -1,6 +1,7 @@
 require "./types"
 require "./ast"
-require "./lexer_adapter"
+require "./token_stream"
+require "./condition_parser"
 require "./definition_parser"
 require "./statement_parser"
 require "./parser"

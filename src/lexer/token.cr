@@ -1,10 +1,12 @@
 enum TokenType
+  Package
   Module
   Define
   DriveTrain
   Forward
   Reverse
   Dc
+  Servo
   Var
   TeleOp
   Group
@@ -23,9 +25,15 @@ enum TokenType
   OpenParen
   CloseParen
   GreaterThan
+  GreaterEq
   LessThan
+  LessEq
+  EqEq
+  NotEq
+  AndAnd
+  OrOr
   Assignment
-  Dot
+  Dot # reserved
   EOF
 end
 
