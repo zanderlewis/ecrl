@@ -1,4 +1,5 @@
 require "./token"
+require "./keywords"
 
 class LexerScanner
   def initialize(@source : String)
@@ -35,7 +36,11 @@ class LexerScanner
       when '}' then tokens << Token.new(TokenType::CloseBrace, "}", @line); @position += 1; next
       when ':' then tokens << Token.new(TokenType::Colon, ":", @line); @position += 1; next
       when ',' then tokens << Token.new(TokenType::Comma, ",", @line); @position += 1; next
+      when ';' then tokens << Token.new(TokenType::Semicolon, ";", @line); @position += 1; next
+      when '+' then tokens << Token.new(TokenType::Plus, "+", @line); @position += 1; next
       when '-' then tokens << Token.new(TokenType::Minus, "-", @line); @position += 1; next
+      when '*' then tokens << Token.new(TokenType::Star, "*", @line); @position += 1; next
+      when '/' then tokens << Token.new(TokenType::Slash, "/", @line); @position += 1; next
       when '(' then tokens << Token.new(TokenType::OpenParen, "(", @line); @position += 1; next
       when ')' then tokens << Token.new(TokenType::CloseParen, ")", @line); @position += 1; next
       when '>'
@@ -184,24 +189,6 @@ class LexerScanner
     end
     word = @source[start...@position]
 
-    type = case word
-           when "package"  then TokenType::Package
-           when "module"     then TokenType::Module
-           when "define"     then TokenType::Define
-           when "drivetrain" then TokenType::DriveTrain
-           when "FORWARD"    then TokenType::Forward
-           when "REVERSE"    then TokenType::Reverse
-           when "dc"         then TokenType::Dc
-           when "servo"      then TokenType::Servo
-           when "var"        then TokenType::Var
-           when "teleop"     then TokenType::TeleOp
-           when "group"      then TokenType::Group
-           when "loop"       then TokenType::Loop
-           when "if"         then TokenType::If
-           when "else"       then TokenType::Else
-           else                   TokenType::Identifier
-           end
-
-    Token.new(type, word, @line)
+    Token.new(Keywords.lookup(word), word, @line)
   end
 end

@@ -1,5 +1,5 @@
 require "../lexer/token"
-require "./types"
+require "./program"
 require "./token_stream"
 
 class DefinitionParser

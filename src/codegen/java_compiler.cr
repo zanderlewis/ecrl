@@ -1,57 +1,28 @@
-require "../parser/ast"
-require "../parser/types"
-require "./formatter"
-require "./ast_walker"
-require "./subroutines"
+require "../parser/program"
+require "./imports"
+require "./members"
+require "./hardware_init"
+require "./emit/emitter"
+require "./helpers/mecanum"
+require "./helpers/deadzone"
+require "./helpers/wait"
+require "./helpers/routines"
 
 class JavaCompiler
   LOOP_BODY_INDENT = "            "
+  AUTO_BODY_INDENT = "        "
 
   def initialize(@program : Program, @package_name : String = @program.package)
   end
 
   def compile : String
     String.build do |io|
-      generate_package_and_imports(io)
-      generate_class_header(io)
-      generate_member_declarations(io)
+      CodegenImports.generate(io, @package_name, @program)
+      CodegenImports.generate_class_header(io, @program)
+      CodegenMembers.generate(io, @program)
       generate_run_op_mode_method(io)
-      generate_subroutines(io) if @program.uses_drive?
+      generate_helpers(io)
       io << "}\n"
-    end
-  end
-
-  private def uses_servos? : Bool
-    @program.hardware.values.includes?("Servo")
-  end
-
-  private def generate_package_and_imports(io : IO)
-    io << "package #{@package_name};\n\n"
-    io << "import com.qualcomm.robotcore.eventloop.opmode.TeleOp;\n"
-    io << "import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;\n"
-    io << "import com.qualcomm.robotcore.hardware.DcMotor;\n"
-    io << "import com.qualcomm.robotcore.hardware.DcMotorEx;\n"
-    io << "import com.qualcomm.robotcore.hardware.Servo;\n" if uses_servos?
-    io << "\n"
-  end
-
-  private def generate_class_header(io : IO)
-    io << "@TeleOp(name=\"#{@program.name}\", group=\"#{@program.group}\")\n"
-    io << "public class #{@program.module_name} extends LinearOpMode {\n\n"
-  end
-
-  private def generate_member_declarations(io : IO)
-    @program.vars.each do |var_name, variable|
-      java_type = ValueFormatter.get_java_type(variable.value)
-      io << "    private #{java_type} #{var_name};\n"
-    end
-
-    if !@program.chassis.empty?
-      io << "    private DcMotor leftFront, rightFront, leftBack, rightBack;\n"
-    end
-
-    @program.hardware.each do |name, type|
-      io << "    private #{type} #{ValueFormatter.hardware_field(name, type)};\n"
     end
   end
 
@@ -59,57 +30,41 @@ class JavaCompiler
     io << "\n    @Override\n"
     io << "    public void runOpMode() {\n"
 
-    generate_chassis_initialization(io) if !@program.chassis.empty?
-    generate_hardware_initialization(io)
-    generate_variable_initialization(io)
+    HardwareInit.generate_chassis(io, @program) if !@program.chassis.empty?
+    HardwareInit.generate_hardware(io, @program)
+    HardwareInit.generate_variables(io, @program)
 
     io << "\n        waitForStart();\n\n"
-    io << "        while (opModeIsActive()) {\n"
 
-    @program.body.each do |expr|
-      AstWalker.walk_ast(expr, io, LOOP_BODY_INDENT, @program.hardware)
-    end
-
-    io << "        }\n"
-    io << "    }\n"
-    io << "\n" unless @program.uses_drive?
-  end
-
-  private def generate_chassis_initialization(io : IO)
-    fl = @program.chassis["fl"]
-    fr = @program.chassis["fr"]
-    bl = @program.chassis["bl"]
-    br = @program.chassis["br"]
-
-    io << "        leftFront  = hardwareMap.get(DcMotor.class, \"#{fl.not_nil!.name}\");\n"
-    io << "        rightFront = hardwareMap.get(DcMotor.class, \"#{fr.not_nil!.name}\");\n"
-    io << "        leftBack   = hardwareMap.get(DcMotor.class, \"#{bl.not_nil!.name}\");\n"
-    io << "        rightBack  = hardwareMap.get(DcMotor.class, \"#{br.not_nil!.name}\");\n\n"
-
-    io << "        leftFront.setDirection(DcMotor.Direction.#{fl.not_nil!.direction});\n"
-    io << "        rightFront.setDirection(DcMotor.Direction.#{fr.not_nil!.direction});\n"
-    io << "        leftBack.setDirection(DcMotor.Direction.#{bl.not_nil!.direction});\n"
-    io << "        rightBack.setDirection(DcMotor.Direction.#{br.not_nil!.direction});\n\n"
-  end
-
-  private def generate_hardware_initialization(io : IO)
-    @program.hardware.each do |name, type|
-      field = ValueFormatter.hardware_field(name, type)
-      io << "        #{field} = hardwareMap.get(#{type}.class, \"#{name}\");\n"
-      if type == "DcMotorEx"
-        io << "        #{field}.setMode(DcMotor.RunMode.RUN_USING_ENCODER);\n"
+    case @program.kind
+    when OpModeKind::TeleOp
+      io << "        while (opModeIsActive()) {\n"
+      @program.body.each do |expr|
+        Emitter.emit(expr, io, LOOP_BODY_INDENT, @program.hardware)
+      end
+      io << "        }\n"
+    when OpModeKind::Autonomous
+      @program.body.each do |expr|
+        Emitter.emit(expr, io, AUTO_BODY_INDENT, @program.hardware)
       end
     end
+
+    io << "    }\n"
   end
 
-  private def generate_variable_initialization(io : IO)
-    @program.vars.each do |var_name, variable|
-      io << "        #{var_name} = #{ValueFormatter.format_value(variable.value)};\n"
+  private def generate_helpers(io : IO)
+    needs_helpers = @program.uses_drive? || @program.uses_deadzone? || @program.uses_wait? || !@program.routines.empty?
+    io << "\n" if needs_helpers
+
+    MecanumSubroutine.generate(io) if @program.uses_drive?
+    if @program.uses_deadzone?
+      io << "\n" if @program.uses_drive?
+      DeadzoneHelper.generate(io)
     end
-  end
-
-  private def generate_subroutines(io : IO)
-    io << "\n"
-    MecanumSubroutine.generate(io)
+    if @program.uses_wait?
+      io << "\n" if @program.uses_drive? || @program.uses_deadzone?
+      WaitHelper.generate(io)
+    end
+    RoutineEmitter.generate(io, @program)
   end
 end

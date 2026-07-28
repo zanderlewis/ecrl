@@ -1,0 +1,35 @@
+! Simple autonomous example: drive forward briefly, run intake, stop.
+
+package "org.firstinspires.ftc.teamcode.auto"
+module "SimpleAuto"
+
+define {
+    drivetrain {
+        fl: "leftFront"  FORWARD
+        fr: "rightFront" REVERSE
+        bl: "leftBack"   FORWARD
+        br: "rightBack"  FORWARD
+    }
+
+    var drive_power = 0.5
+    var intake_power = 0.8
+    dc "intake"
+}
+
+routine spit(seconds) {
+    robot.intake.set_power(intake_power)
+    wait(seconds)
+    robot.intake.stop()
+}
+
+autonomous "Simple Auto" group "Auto" {
+    drive(drive_power, 0.0, 0.0)
+    wait(1.5)
+    drive(0.0, 0.0, 0.0)
+
+    spit(2.0)
+
+    for i = 0; i < 3; i = i + 1 {
+        wait(0.25)
+    }
+}

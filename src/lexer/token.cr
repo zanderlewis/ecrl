@@ -9,10 +9,14 @@ enum TokenType
   Servo
   Var
   TeleOp
+  Autonomous
   Group
   Loop
   If
   Else
+  While
+  For
+  Routine
   Identifier
   StringLiteral
   InterpolatedString
@@ -21,7 +25,11 @@ enum TokenType
   CloseBrace
   Colon
   Comma
+  Semicolon
+  Plus
   Minus
+  Star
+  Slash
   OpenParen
   CloseParen
   GreaterThan

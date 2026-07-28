@@ -1,6 +1,7 @@
 require "../lexer/token"
-require "./ast"
+require "./ast/mod"
 require "./token_stream"
+require "./value_parser"
 
 module ConditionParser
   COMPARISON_TOKENS = {

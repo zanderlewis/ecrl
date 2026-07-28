@@ -44,4 +44,20 @@ describe Lexer do
       Lexer.new("@").tokenize
     end
   end
+
+  it "tokenizes arithmetic operators and new keywords" do
+    tokens = Lexer.new("autonomous while for routine + * / ;").tokenize
+    types = tokens[..-2].map &.type
+
+    types.should eq([
+      TokenType::Autonomous,
+      TokenType::While,
+      TokenType::For,
+      TokenType::Routine,
+      TokenType::Plus,
+      TokenType::Star,
+      TokenType::Slash,
+      TokenType::Semicolon,
+    ])
+  end
 end

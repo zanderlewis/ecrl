@@ -47,7 +47,7 @@ just test
 
 ## Language Overview
 
-An ECRL program has three main sections:
+An ECRL program has a `define` block, optional `routine`s, and **exactly one** OpMode (`teleop` or `autonomous`):
 
 ```ecr
 package "org.firstinspires.ftc.teamcode.teleop"
@@ -66,14 +66,28 @@ define {
     servo "wrist"
 }
 
+routine pulse_intake(power) {
+    robot.intake.set_power(power)
+    wait(0.5)
+    robot.intake.stop()
+}
+
 teleop "Drive Mode" group "Main" {
     loop {
-        drive(gpad1.left_stick_y, gpad1.left_stick_x, gpad1.right_stick_x)
+        drive(
+            deadzone(gpad1.left_stick_y, 0.05),
+            deadzone(gpad1.left_stick_x, 0.05),
+            deadzone(gpad1.right_stick_x, 0.05)
+        )
 
         if gpad1.square && gpad2.triangle {
-            robot.intake.set_power(speed)
+            robot.intake.set_power(speed * 0.5)
         } else if gpad1.right_trigger >= 0.5 {
             robot.intake.stop()
+        }
+
+        while gpad1.dpad_up {
+            pulse_intake(1.0)
         }
 
         robot.wrist.set_position(0.5)
@@ -83,13 +97,47 @@ teleop "Drive Mode" group "Main" {
 }
 ```
 
+Autonomous programs use a sequential body (no outer `loop`):
+
+```ecr
+package "org.firstinspires.ftc.teamcode.auto"
+module "RedAuto"
+
+define {
+    drivetrain {
+        fl: "lf" FORWARD
+        fr: "rf" REVERSE
+        bl: "lb" FORWARD
+        br: "rb" FORWARD
+    }
+    dc "intake"
+}
+
+autonomous "Red Auto" group "Auto" {
+    drive(0.5, 0.0, 0.0)
+    wait(1.5)
+    drive(0.0, 0.0, 0.0)
+
+    for i = 0; i < 3; i = i + 1 {
+        wait(0.25)
+    }
+}
+```
+
+### Features
+
 - `!` starts a line comment
 - `package` sets the generated Java package (default: `org.firstinspires.ftc.teamcode.teleop`)
 - `module` sets the generated Java class name
 - `define` declares hardware, variables, and the mecanum drivetrain
-- `teleop` defines the FTC `@TeleOp` name, group, and main loop
+- `teleop` / `autonomous` — exactly one OpMode per file (`@TeleOp` or `@Autonomous`)
+- `routine name(params) { ... }` — reusable void helpers; call with `name(args)`
 - `gpad1.*` maps to `gamepad1.*`; `gpad2.*` maps to `gamepad2.*`
-- `dc` declares motors; `servo` declares servos
+- Arithmetic in values: `+`, `-`, `*`, `/`, parentheses, unary `-`
+- `while cond { }` and `for i = init; cond; i = step { }`
+- `wait(seconds)` — interruptible delay (`waitSeconds` helper)
+- `deadzone(value, threshold)` — builtin stick deadzone helper
+- `dc` / `servo` declare motors and servos
 - `if` supports comparisons (`>`, `<`, `>=`, `<=`, `==`, `!=`), `&&`, and `||`
 - `robot.<device>.set_power/set_velocity/stop` controls motors; `set_position` controls servos
 - `robot.tel.show/update` handles telemetry
@@ -97,7 +145,8 @@ teleop "Drive Mode" group "Main" {
 ## Examples
 
 - [Limelight Robotics #23574 2025-2026 TeamCode re-creation](examples/limelightrobotics_2025remake.ecr) — full competition-style teleop with multiple motors
-- [Dual driver arm](examples/dual_driver_arm.ecr) — two-gamepad setup with servos, compound conditions, and runtime variable changes
+- [Dual driver arm](examples/dual_driver_arm.ecr) — two-gamepad setup with servos, deadzone, and compound conditions
+- [Simple auto](examples/simple_auto.ecr) — autonomous with routines, `wait`, and `for`
 
 Compile an example with:
 
@@ -105,10 +154,10 @@ Compile an example with:
 just buildrun examples/dual_driver_arm.ecr
 ```
 
-Or the Limelight example:
+Or the autonomous example:
 
 ```bash
-just buildrun examples/limelightrobotics_2025remake.ecr
+just buildrun examples/simple_auto.ecr
 ```
 
 ## Contributing

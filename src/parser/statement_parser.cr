@@ -1,36 +1,18 @@
 require "../lexer/token"
-require "./ast"
-require "./types"
+require "./ast/mod"
+require "./program"
 require "./token_stream"
-require "./condition_parser"
-
-module ValueExprParser
-  def self.parse(stream : TokenStream) : ValueExpr
-    if stream.peek.type == TokenType::Minus
-      stream.consume(TokenType::Minus)
-      return NegatedValueExpr.new(parse(stream))
-    end
-
-    case stream.peek.type
-    when TokenType::NumberLiteral
-      NumberValueExpr.new(stream.consume(TokenType::NumberLiteral).value)
-    when TokenType::Identifier
-      IdentifierValueExpr.new(stream.consume(TokenType::Identifier).value)
-    else
-      raise "[PARSER] Expected number or identifier on line #{stream.peek.line}"
-    end
-  end
-
-  def self.parse_identifier(stream : TokenStream) : IdentifierValueExpr
-    unless stream.peek.type == TokenType::Identifier
-      raise "[PARSER] Expected identifier on line #{stream.peek.line}"
-    end
-    IdentifierValueExpr.new(stream.consume(TokenType::Identifier).value)
-  end
-end
+require "./value_parser"
+require "./statements/robot_parser"
+require "./statements/if_parser"
+require "./statements/loop_parser"
 
 class StatementParser
-  def initialize(@stream : TokenStream, @variables : Hash(String, Variable))
+  def initialize(
+    @stream : TokenStream,
+    @variables : Hash(String, Variable),
+    @routines : Hash(String, Int32) = {} of String => Int32,
+  )
   end
 
   def parse_statement : Expression
@@ -39,140 +21,31 @@ class StatementParser
       id = @stream.consume(TokenType::Identifier).value
 
       if id == "drive"
-        return parse_drive_call
+        return RobotParser.parse_drive_call(@stream)
+      elsif id == "wait"
+        return RobotParser.parse_wait_call(@stream)
       elsif @variables.has_key?(id) && @stream.peek.type == TokenType::Assignment
         @stream.consume(TokenType::Assignment)
         return VarReassignmentExpr.new(id, ValueExprParser.parse(@stream))
       elsif id.starts_with?("robot.")
-        return parse_robot_method(id)
+        return RobotParser.parse_robot_method(@stream, id)
+      elsif @routines.has_key?(id) && @stream.peek.type == TokenType::OpenParen
+        return RobotParser.parse_call(@stream, id)
+      elsif @stream.peek.type == TokenType::OpenParen
+        # Allow forward references — validated later
+        return RobotParser.parse_call(@stream, id)
       end
 
       raise "[PARSER] Unexpected identifier '#{id}' on line #{@stream.peek.line}"
     when TokenType::If
-      return parse_if_statement
+      return IfParser.parse(@stream, @variables) { parse_block_statements }
+    when TokenType::While
+      return LoopParser.parse_while(@stream) { parse_block_statements }
+    when TokenType::For
+      return LoopParser.parse_for(@stream) { parse_block_statements }
     else
       raise "[PARSER] Unexpected token '#{@stream.peek.value}' on line #{@stream.peek.line}"
     end
-  end
-
-  private def parse_drive_call : DriveMecanumExpr
-    @stream.consume(TokenType::OpenParen)
-    y = ValueExprParser.parse_identifier(@stream)
-    @stream.consume(TokenType::Comma) if @stream.peek.type == TokenType::Comma
-    x = ValueExprParser.parse_identifier(@stream)
-    @stream.consume(TokenType::Comma) if @stream.peek.type == TokenType::Comma
-    rx = ValueExprParser.parse_identifier(@stream)
-    @stream.consume(TokenType::CloseParen)
-    DriveMecanumExpr.new(y, x, rx)
-  end
-
-  private def parse_robot_method(id : String) : Expression
-    parts = id.split(".")
-    device_name = parts[1]?
-    method_call = parts[2]?
-
-    if device_name.nil?
-      raise "[PARSER] Invalid robot method format: #{id}"
-    end
-
-    if device_name == "tel"
-      case method_call
-      when "show"  then return parse_telemetry_show
-      when "update"
-        @stream.consume(TokenType::OpenParen)
-        @stream.consume(TokenType::CloseParen)
-        return TelemetryUpdateExpr.new
-      end
-    elsif !method_call.nil? && (method_call == "set_power" || method_call == "set_velocity")
-      return parse_motor_method(device_name, method_call)
-    elsif !method_call.nil? && method_call == "set_position"
-      return parse_servo_method(device_name)
-    elsif !method_call.nil? && method_call == "stop"
-      @stream.consume(TokenType::OpenParen)
-      @stream.consume(TokenType::CloseParen)
-      return StopExpr.new(device_name)
-    end
-
-    raise "[PARSER] Unknown robot method: #{id}"
-  end
-
-  private def parse_telemetry_show : TelemetryAddDataExpr
-    @stream.consume(TokenType::OpenParen)
-
-    if @stream.peek.type != TokenType::StringLiteral
-      raise "[PARSER] Telemetry label must be a plain string on line #{@stream.peek.line}"
-    end
-    label = @stream.consume(TokenType::StringLiteral).value
-    args = [] of TelemetryValue
-
-    while @stream.peek.type == TokenType::Comma
-      @stream.consume(TokenType::Comma)
-      args << parse_telemetry_arg
-    end
-
-    @stream.consume(TokenType::CloseParen)
-    TelemetryAddDataExpr.new(label, args)
-  end
-
-  private def parse_telemetry_arg : TelemetryValue
-    case @stream.peek.type
-    when TokenType::InterpolatedString
-      TelemetryInterpolatedString.from_lexer(@stream.consume(TokenType::InterpolatedString).value)
-    when TokenType::StringLiteral
-      TelemetryStringLiteral.new(@stream.consume(TokenType::StringLiteral).value)
-    else
-      TelemetryRawExpr.new(ValueExprParser.parse(@stream))
-    end
-  end
-
-  private def parse_motor_method(device_name : String, method_call : String) : Expression
-    @stream.consume(TokenType::OpenParen)
-    val = ValueExprParser.parse(@stream)
-
-    ticks_per_rev = nil
-    if method_call == "set_velocity" && @stream.peek.type == TokenType::Comma
-      @stream.consume(TokenType::Comma)
-      ticks_per_rev = ValueExprParser.parse(@stream)
-    end
-
-    @stream.consume(TokenType::CloseParen)
-
-    if method_call == "set_power"
-      SetPowerExpr.new(device_name, val)
-    else
-      SetVelocityExpr.new(device_name, val, ticks_per_rev)
-    end
-  end
-
-  private def parse_servo_method(device_name : String) : SetPositionExpr
-    @stream.consume(TokenType::OpenParen)
-    val = ValueExprParser.parse(@stream)
-    @stream.consume(TokenType::CloseParen)
-    SetPositionExpr.new(device_name, val)
-  end
-
-  def parse_if_statement : IfStatement
-    @stream.consume(TokenType::If)
-    condition = ConditionParser.parse(@stream)
-
-    @stream.consume(TokenType::OpenBrace)
-    if_node = IfStatement.new(condition)
-    if_node.then_branch = parse_block_statements
-    @stream.consume(TokenType::CloseBrace)
-
-    if @stream.peek.type == TokenType::Else
-      @stream.consume(TokenType::Else)
-
-      if @stream.peek.type == TokenType::If
-        if_node.else_branch << parse_if_statement
-      else
-        @stream.consume(TokenType::OpenBrace)
-        if_node.else_branch = parse_block_statements
-        @stream.consume(TokenType::CloseBrace)
-      end
-    end
-
-    if_node
   end
 
   def parse_block_statements : Array(Expression)

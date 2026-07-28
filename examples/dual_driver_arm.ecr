@@ -26,8 +26,12 @@ define {
 
 teleop "Dual Driver Arm" group "TeleOp" {
     loop {
-        ! Driver 1: mecanum drive
-        drive(gpad1.left_stick_y, gpad1.left_stick_x, gpad1.right_stick_x)
+        ! Driver 1: mecanum drive with stick deadzone
+        drive(
+            deadzone(gpad1.left_stick_y, 0.05),
+            deadzone(gpad1.left_stick_x, 0.05),
+            deadzone(gpad1.right_stick_x, 0.05)
+        )
 
         ! Driver 1: intake on triggers (with deadband-style threshold)
         if gpad1.right_trigger > trigger_threshold {

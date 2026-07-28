@@ -232,6 +232,117 @@ describe Parser do
       ECR
     end
   end
+
+  it "parses arithmetic value expressions" do
+    program = parse_ecr(<<-'ECR')
+      define { dc "intake" var speed = 0.5 }
+      teleop "Test" {
+        loop {
+          robot.intake.set_power(speed * 2.0 + 0.1)
+        }
+      }
+    ECR
+
+    power = program.body[0].as(SetPowerExpr).value.as(BinaryValueExpr)
+    power.operator.should eq("+")
+    power.left.as(BinaryValueExpr).operator.should eq("*")
+  end
+
+  it "parses while and for statements" do
+    program = parse_ecr(<<-'ECR')
+      define { dc "intake" }
+      teleop "Test" {
+        loop {
+          while gpad1.a {
+            robot.intake.set_power(1.0)
+          }
+          for i = 0; i < 3; i = i + 1 {
+            wait(0.1)
+          }
+        }
+      }
+    ECR
+
+    program.body[0].should be_a(WhileStatement)
+    for_stmt = program.body[1].as(ForStatement)
+    for_stmt.var_name.should eq("i")
+    for_stmt.body[0].should be_a(WaitExpr)
+  end
+
+  it "parses routines and calls" do
+    program = parse_ecr(<<-'ECR')
+      define { dc "intake" }
+      routine spit(power) {
+        robot.intake.set_power(power)
+        wait(1.0)
+        robot.intake.stop()
+      }
+      teleop "Test" {
+        loop {
+          spit(0.8)
+        }
+      }
+    ECR
+
+    program.routines.size.should eq(1)
+    program.routines[0].name.should eq("spit")
+    program.routines[0].params.should eq(["power"])
+    program.body[0].as(CallExpr).name.should eq("spit")
+  end
+
+  it "parses autonomous OpMode" do
+    program = parse_ecr(<<-'ECR')
+      define { dc "intake" }
+      autonomous "Red Auto" group "Auto" {
+        wait(1.0)
+        robot.intake.set_power(1.0)
+      }
+    ECR
+
+    program.kind.should eq(OpModeKind::Autonomous)
+    program.name.should eq("Red Auto")
+    program.group.should eq("Auto")
+    program.body[0].should be_a(WaitExpr)
+  end
+
+  it "rejects both teleop and autonomous in one file" do
+    expect_raises(Exception, /Only one OpMode/) do
+      parse_ecr(<<-'ECR')
+        define { }
+        teleop "A" { loop { } }
+        autonomous "B" { }
+      ECR
+    end
+  end
+
+  it "rejects programs with no OpMode" do
+    expect_raises(Exception, /exactly one/) do
+      parse_ecr(<<-'ECR')
+        define { }
+      ECR
+    end
+  end
+
+  it "parses deadzone value expressions" do
+    program = parse_ecr(<<-'ECR')
+      define {
+        drivetrain {
+          fl: "lf" FORWARD
+          fr: "rf" FORWARD
+          bl: "lb" FORWARD
+          br: "rb" FORWARD
+        }
+      }
+      teleop "Test" {
+        loop {
+          drive(deadzone(gpad1.left_stick_y, 0.05), 0.0, 0.0)
+        }
+      }
+    ECR
+
+    drive = program.body[0].as(DriveMecanumExpr)
+    drive.y.should be_a(DeadzoneValueExpr)
+  end
 end
 
 describe TelemetryInterpolatedString do

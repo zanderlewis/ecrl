@@ -47,6 +47,12 @@ describe ValueFormatter do
     ValueFormatter.format_value_expr(
       NegatedValueExpr.new(IdentifierValueExpr.new("intake_power"))
     ).should eq("-intake_power")
+    ValueFormatter.format_value_expr(
+      BinaryValueExpr.new(NumberValueExpr.new("1"), "+", NumberValueExpr.new("2"))
+    ).should eq("(1 + 2)")
+    ValueFormatter.format_value_expr(
+      DeadzoneValueExpr.new(IdentifierValueExpr.new("gpad1.left_stick_y"), NumberValueExpr.new("0.05"))
+    ).should eq("deadzone(gamepad1.left_stick_y, 0.05)")
   end
 end
 
@@ -231,5 +237,73 @@ describe JavaCompiler do
     ECR
 
     output.should contain("if (((gamepad1.a && gamepad1.b) || gamepad1.c > 0.5)) {")
+  end
+
+  it "generates arithmetic and deadzone helpers" do
+    output = compile_ecr(<<-'ECR')
+      define {
+        drivetrain {
+          fl: "lf" FORWARD
+          fr: "rf" FORWARD
+          bl: "lb" FORWARD
+          br: "rb" FORWARD
+        }
+        var speed = 0.5
+      }
+      teleop "Test" {
+        loop {
+          drive(deadzone(gpad1.left_stick_y, 0.05), speed * 0.5, 0.0)
+        }
+      }
+    ECR
+
+    output.should contain("deadzone(gamepad1.left_stick_y, 0.05)")
+    output.should contain("(speed * 0.5)")
+    output.should contain("private double deadzone(double value, double threshold)")
+  end
+
+  it "generates while, for, wait, and routines" do
+    output = compile_ecr(<<-'ECR')
+      define { dc "intake" }
+      routine pulse(power) {
+        robot.intake.set_power(power)
+        wait(0.5)
+        robot.intake.stop()
+      }
+      teleop "Test" {
+        loop {
+          while gpad1.a {
+            pulse(1.0)
+          }
+          for i = 0; i < 2; i = i + 1 {
+            wait(0.1)
+          }
+        }
+      }
+    ECR
+
+    output.should contain("while (gamepad1.a) {")
+    output.should contain("for (int i = 0; i < 2; i = (i + 1)) {")
+    output.should contain("waitSeconds(0.1);")
+    output.should contain("private void pulse(double power)")
+    output.should contain("pulse(1.0);")
+    output.should contain("private void waitSeconds(double seconds)")
+  end
+
+  it "generates Autonomous annotation and sequential body" do
+    output = compile_ecr(<<-'ECR')
+      define { dc "intake" }
+      autonomous "Red Auto" group "Auto" {
+        wait(1.0)
+        robot.intake.set_power(1.0)
+      }
+    ECR
+
+    output.should contain("import com.qualcomm.robotcore.eventloop.opmode.Autonomous;")
+    output.should contain("@Autonomous(name=\"Red Auto\", group=\"Auto\")")
+    output.should_not contain("@TeleOp")
+    output.should contain("waitForStart();")
+    output.should contain("waitSeconds(1.0);")
+    output.should_not contain("while (opModeIsActive())")
   end
 end
